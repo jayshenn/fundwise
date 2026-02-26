@@ -7,11 +7,13 @@ requires-python = ">=3.11"
 dependencies = [
     "akshare",
     "matplotlib>=3.10.8",
+    "pandas>=3.0.1",
 ]
 
 [dependency-groups]
 dev = [
     "ipykernel",
+    "jupyterlab>=4.5.5",
     "pyright",
     "pytest",
     "ruff",

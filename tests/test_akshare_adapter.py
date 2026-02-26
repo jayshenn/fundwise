@@ -185,6 +185,58 @@ def test_get_industry_pe_history_fallback_to_cache(monkeypatch, tmp_path: Path) 
     assert data["industry_pe"].tolist() == [28.5]
 
 
+def test_get_industry_pe_history_warn_once_on_repeated_fetch_failures(
+    monkeypatch,
+    tmp_path: Path,
+    recwarn,
+) -> None:
+    cache_dir = tmp_path / "industry-cache"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    cache_file = cache_dir / "600519_SH-industry_pe.csv"
+    pd.DataFrame(
+        {
+            "symbol": ["600519.SH"],
+            "date": ["2024-12-31"],
+            "industry": ["酿酒行业"],
+            "industry_pe": [28.5],
+            "market": ["CN"],
+        }
+    ).to_csv(cache_file, index=False)
+
+    monkeypatch.setattr(
+        adapter_module.ak,
+        "stock_individual_info_em",
+        lambda *args, **kwargs: pd.DataFrame({"item": ["行业"], "value": ["酿酒行业"]}),
+    )
+    monkeypatch.setattr(
+        adapter_module,
+        "_quarter_end_candidates",
+        lambda max_years_back=8: ["20251231", "20250930", "20250630"],
+    )
+
+    def _raise_length_mismatch(*args, **kwargs) -> pd.DataFrame:
+        raise ValueError(
+            "Length mismatch: Expected axis has 0 elements, new values have 12 elements"
+        )
+
+    monkeypatch.setattr(
+        adapter_module.ak,
+        "stock_industry_pe_ratio_cninfo",
+        _raise_length_mismatch,
+    )
+
+    adapter = AkshareDataAdapter(strict=True, industry_cache_dir=cache_dir)
+    data = adapter.get_industry_pe_history("600519.SH")
+
+    assert not data.empty
+    endpoint_warnings = [
+        item
+        for item in recwarn
+        if "stock_industry_pe_ratio_cninfo 获取失败" in str(item.message)
+    ]
+    assert len(endpoint_warnings) == 1
+
+
 def test_get_industry_roe_history_fallback_to_cache(monkeypatch, tmp_path: Path) -> None:
     cache_dir = tmp_path / "industry-cache"
     cache_dir.mkdir(parents=True, exist_ok=True)

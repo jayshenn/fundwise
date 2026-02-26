@@ -1,0 +1,36 @@
+{
+  "run_date": "2026-02-26",
+  "generated_at": "2026-02-26 22:58:46",
+  "success_symbols": [
+    "000651.SZ"
+  ],
+  "failed_symbols": {},
+  "generated_files": [
+    "/Users/jayshen/dev/fundwise/data/normalized/2026-02-26/000651_SZ/price_history-2026-02-26.csv",
+    "/Users/jayshen/dev/fundwise/data/normalized/2026-02-26/000651_SZ/market_cap_history-2026-02-26.csv",
+    "/Users/jayshen/dev/fundwise/data/normalized/2026-02-26/000651_SZ/financial_indicators-2024-12-31.csv",
+    "/Users/jayshen/dev/fundwise/data/normalized/2026-02-26/000651_SZ/financial_indicators_quarterly-2025-09-30.csv",
+    "/Users/jayshen/dev/fundwise/data/normalized/2026-02-26/000651_SZ/pe_history-2026-02-26.csv",
+    "/Users/jayshen/dev/fundwise/data/normalized/2026-02-26/000651_SZ/hs300_pe_history-2026-02-26.csv",
+    "/Users/jayshen/dev/fundwise/data/normalized/2026-02-26/000651_SZ/industry_pe_history-2026-02-26.csv",
+    "/Users/jayshen/dev/fundwise/data/normalized/2026-02-26/000651_SZ/industry_roe_history-2026-02-26.csv",
+    "/Users/jayshen/dev/fundwise/data/normalized/2026-02-26/000651_SZ/balance_components-2025-09-30.csv",
+    "/Users/jayshen/dev/fundwise/reports/daily/2026-02-26/company_dossier/000651_SZ/company-dossier-2026-02-26.md",
+    "/Users/jayshen/dev/fundwise/reports/daily/2026-02-26/company_dossier/000651_SZ/charts/000651_SZ-market-cap-revenue.png",
+    "/Users/jayshen/dev/fundwise/reports/daily/2026-02-26/company_dossier/000651_SZ/charts/000651_SZ-revenue-ocf.png",
+    "/Users/jayshen/dev/fundwise/reports/daily/2026-02-26/company_dossier/000651_SZ/charts/000651_SZ-profit-ocf.png",
+    "/Users/jayshen/dev/fundwise/reports/daily/2026-02-26/company_dossier/000651_SZ/charts/000651_SZ-pe-compare.png",
+    "/Users/jayshen/dev/fundwise/reports/daily/2026-02-26/company_dossier/000651_SZ/charts/000651_SZ-pe-normal-band.png",
+    "/Users/jayshen/dev/fundwise/reports/daily/2026-02-26/company_dossier/000651_SZ/charts/000651_SZ-balance-structure.png",
+    "/Users/jayshen/dev/fundwise/reports/daily/2026-02-26/company_dossier/000651_SZ/charts/000651_SZ-balance-trend.png",
+    "/Users/jayshen/dev/fundwise/reports/daily/2026-02-26/watchlist_screener/watchlist-2026-02-26.md",
+    "/Users/jayshen/dev/fundwise/reports/daily/2026-02-26/watchlist_screener/watchlist-2026-02-26.csv",
+    "/Users/jayshen/dev/fundwise/reports/daily/2026-02-26/watchlist_screener/charts/watchlist-total-score.png",
+    "/Users/jayshen/dev/fundwise/reports/daily/2026-02-26/watchlist_screener/charts/watchlist-factor-median.png",
+    "/Users/jayshen/dev/fundwise/reports/daily/2026-02-26/market_timing_panel/market-timing-2026-02-26.md",
+    "/Users/jayshen/dev/fundwise/reports/daily/2026-02-26/market_timing_panel/market-timing-scores-2026-02-26.csv",
+    "/Users/jayshen/dev/fundwise/reports/daily/2026-02-26/market_timing_panel/charts/market-risk-temperature.png",
+    "/Users/jayshen/dev/fundwise/reports/daily/2026-02-26/market_timing_panel/charts/market-tier-distribution.png",
+    "/Users/jayshen/dev/fundwise/reports/daily/2026-02-26/market_timing_panel/charts/market-factor-median.png"
+  ]
+}

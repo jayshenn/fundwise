@@ -100,6 +100,7 @@ class AkshareDataAdapter:
         self.strict = strict
         self.industry_cache_dir = industry_cache_dir or Path("data/cache/industry")
         self._industry_name_cache: dict[str, str | None] = {}
+        self._optional_warning_emitted_endpoints: set[str] = set()
 
     def get_symbol_info(self, symbol: str) -> SymbolInfo:
         """解析并返回标准化 symbol 信息。"""
@@ -415,6 +416,7 @@ class AkshareDataAdapter:
                     symbol="证监会行业分类",
                     date=snapshot_date,
                 ),
+                warn_once=True,
             )
             if snapshot.empty:
                 continue
@@ -913,14 +915,19 @@ class AkshareDataAdapter:
             )
         return _finalize_sorted(pd.DataFrame(rows), BALANCE_COMPONENT_COLUMNS)
 
-    def _fetch_dataframe(self, endpoint_name: str, fetcher: DataFrameFetcher) -> pd.DataFrame:
-        """带重试获取 DataFrame；严格模式失败抛错。"""
+    def _fetch_dataframe_with_status(
+        self,
+        endpoint_name: str,
+        fetcher: DataFrameFetcher,
+        emit_warning: bool = True,
+    ) -> tuple[pd.DataFrame, bool]:
+        """带重试获取 DataFrame，并返回是否失败。"""
         last_error: Exception | None = None
         for attempt in range(1, self.retries + 1):
             try:
                 data = fetcher()
                 if isinstance(data, pd.DataFrame):
-                    return data
+                    return data, False
                 raise TypeError(f"{endpoint_name} 返回类型非 DataFrame: {type(data)!r}")
             except (
                 requests.exceptions.RequestException,
@@ -938,19 +945,40 @@ class AkshareDataAdapter:
         message = _build_endpoint_error(endpoint_name, self.retries, last_error)
         if self.strict:
             raise RuntimeError(message) from last_error
-        warnings.warn(message, stacklevel=2)
-        return pd.DataFrame()
+        if emit_warning:
+            warnings.warn(message, stacklevel=2)
+        return pd.DataFrame(), True
+
+    def _fetch_dataframe(self, endpoint_name: str, fetcher: DataFrameFetcher) -> pd.DataFrame:
+        """带重试获取 DataFrame；严格模式失败抛错。"""
+        data, _ = self._fetch_dataframe_with_status(
+            endpoint_name=endpoint_name,
+            fetcher=fetcher,
+            emit_warning=True,
+        )
+        return data
 
     def _fetch_optional_dataframe(
         self,
         endpoint_name: str,
         fetcher: DataFrameFetcher,
+        warn_once: bool = False,
     ) -> pd.DataFrame:
         """以非严格模式获取可选数据。"""
         strict_before = self.strict
         self.strict = False
         try:
-            return self._fetch_dataframe(endpoint_name=endpoint_name, fetcher=fetcher)
+            emit_warning = not (
+                warn_once and endpoint_name in self._optional_warning_emitted_endpoints
+            )
+            data, failed = self._fetch_dataframe_with_status(
+                endpoint_name=endpoint_name,
+                fetcher=fetcher,
+                emit_warning=emit_warning,
+            )
+            if warn_once and failed:
+                self._optional_warning_emitted_endpoints.add(endpoint_name)
+            return data
         finally:
             self.strict = strict_before
 
