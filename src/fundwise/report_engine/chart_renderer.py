@@ -273,11 +273,10 @@ def _plot_market_cap_vs_revenue(
     revenue_data = _prepare_multi_series(financial_frame, ["revenue"])
     if revenue_data.empty:
         return []
+    revenue_numeric = _numeric_series(revenue_data["revenue"], index=revenue_data.index)
     revenue_data = cast(
         pd.DataFrame,
-        revenue_data.loc[
-            pd.to_numeric(revenue_data["revenue"], errors="coerce").notna(), ["date", "revenue"]
-        ],
+        revenue_data.loc[revenue_numeric.notna(), ["date", "revenue"]],
     )
     if revenue_data.empty:
         return []
@@ -361,9 +360,9 @@ def _plot_revenue_vs_ocf(
     data = _prepare_multi_series(financial_frame, ["revenue", "ocf"])
     if data.empty:
         return []
-    if pd.to_numeric(data["revenue"], errors="coerce").dropna().empty:
+    if not _has_numeric_values(data["revenue"], index=data.index):
         return []
-    if pd.to_numeric(data["ocf"], errors="coerce").dropna().empty:
+    if not _has_numeric_values(data["ocf"], index=data.index):
         return []
 
     metric_frame = cast(pd.DataFrame, data.loc[:, ["revenue", "ocf"]])
@@ -402,9 +401,9 @@ def _plot_profit_vs_ocf(
     data = _prepare_multi_series(financial_frame, ["net_profit", "ocf"])
     if data.empty:
         return []
-    if pd.to_numeric(data["net_profit"], errors="coerce").dropna().empty:
+    if not _has_numeric_values(data["net_profit"], index=data.index):
         return []
-    if pd.to_numeric(data["ocf"], errors="coerce").dropna().empty:
+    if not _has_numeric_values(data["ocf"], index=data.index):
         return []
 
     metric_frame = cast(pd.DataFrame, data.loc[:, ["net_profit", "ocf"]])
@@ -528,11 +527,18 @@ def _plot_pe_sigma_band(
     windowed = cast(pd.DataFrame, company_pe.loc[company_pe["date"] >= window_start, :])
     stats_source = windowed if len(windowed) >= 20 else company_pe
 
-    pe_series = cast(pd.Series, pd.to_numeric(stats_source["value"], errors="coerce").dropna())
+    pe_series = cast(
+        pd.Series,
+        _numeric_series(stats_source["value"], index=stats_source.index).dropna(),
+    )
     if pe_series.empty:
         return []
     mean_pe = float(pe_series.mean())
-    std_pe = float(pe_series.std(ddof=0))
+    std_value = pe_series.std(ddof=0)
+    if isinstance(std_value, pd.Series):
+        std_pe = float(std_value.iloc[0]) if not std_value.empty else 0.0
+    else:
+        std_pe = float(std_value)
     high_line = mean_pe + std_pe
     low_line = max(mean_pe - std_pe, 0.0)
 
@@ -699,9 +705,9 @@ def _plot_balance_trend(
         return []
 
     balance_frame = cast(pd.DataFrame, data.loc[:, ["total_assets", "total_liabilities"]])
-    if pd.to_numeric(balance_frame["total_assets"], errors="coerce").dropna().empty:
+    if not _has_numeric_values(balance_frame["total_assets"], index=balance_frame.index):
         return []
-    if pd.to_numeric(balance_frame["total_liabilities"], errors="coerce").dropna().empty:
+    if not _has_numeric_values(balance_frame["total_liabilities"], index=balance_frame.index):
         return []
 
     debt_ratio = _normalize_ratio_to_percent(cast(pd.Series, data["debt_to_asset"]))
@@ -742,9 +748,10 @@ def _plot_balance_trend(
     axis.set_xticklabels(tick_labels, rotation=30, ha="right")
 
     axis2 = axis.twinx()
+    debt_to_asset_series = cast(pd.Series, data["debt_to_asset"])
     axis2.plot(
         x_positions,
-        data["debt_to_asset"] * 100,
+        debt_to_asset_series * 100.0,
         color="#1B9E77",
         linewidth=1.8,
         label="资产负债率",
@@ -794,16 +801,28 @@ def _align_series_to_dates(series: pd.DataFrame, target_dates: pd.Series) -> pd.
     return cast(pd.Series, aligned)
 
 
+def _numeric_series(values: object, index: pd.Index | None = None) -> pd.Series:
+    """将任意输入收敛为数值 Series。"""
+    numeric = pd.to_numeric(values, errors="coerce")
+    return pd.Series(numeric, index=index)
+
+
+def _has_numeric_values(values: object, index: pd.Index | None = None) -> bool:
+    """判断输入中是否存在至少一个可用数值。"""
+    numeric = cast(pd.Series, _numeric_series(values, index=index).dropna())
+    return not numeric.empty
+
+
 def _normalize_ratio_to_percent(series: pd.Series) -> pd.Series:
     """将比率序列统一转换为百分比值。"""
-    numeric = pd.to_numeric(series, errors="coerce")
+    numeric = _numeric_series(series, index=series.index)
     clean = cast(pd.Series, numeric.dropna())
     if clean.empty:
-        return pd.Series(numeric, index=series.index)
+        return numeric
     median_abs = float(clean.abs().median())
     if median_abs <= 1.2:
-        numeric = numeric * 100
-    return pd.Series(numeric, index=series.index)
+        numeric = cast(pd.Series, numeric * 100.0)
+    return numeric
 
 
 def _prepare_series(frame: pd.DataFrame, value_column: str) -> pd.DataFrame:
@@ -814,11 +833,12 @@ def _prepare_series(frame: pd.DataFrame, value_column: str) -> pd.DataFrame:
     data = pd.DataFrame(
         {
             "date": pd.to_datetime(frame["date"], errors="coerce"),
-            "value": pd.to_numeric(frame[value_column], errors="coerce"),
+            "value": _numeric_series(frame[value_column], index=frame.index),
         }
     )
     data = data.dropna(subset=["date", "value"]).sort_values(by="date")
-    data = cast(pd.DataFrame, data.loc[data["value"] > 0, :])
+    value_numeric = _numeric_series(data["value"], index=data.index)
+    data = cast(pd.DataFrame, data.loc[value_numeric > 0, :])
     return data
 
 
@@ -830,7 +850,7 @@ def _prepare_multi_series(frame: pd.DataFrame, columns: list[str]) -> pd.DataFra
     working = pd.DataFrame({"date": pd.to_datetime(frame["date"], errors="coerce")})
     for column in columns:
         if column in frame.columns:
-            working[column] = pd.to_numeric(frame[column], errors="coerce")
+            working[column] = _numeric_series(frame[column], index=frame.index)
         else:
             working[column] = pd.NA
 
@@ -854,7 +874,7 @@ def _prepare_pe_series(
         pe_data = pd.DataFrame(
             {
                 "date": pd.to_datetime(financial_frame["date"], errors="coerce"),
-                "pe": pd.to_numeric(financial_frame["pe_ttm"], errors="coerce"),
+                "pe": _numeric_series(financial_frame["pe_ttm"], index=financial_frame.index),
             }
         )
         pe_data = pe_data.dropna(subset=["date", "pe"]).sort_values(by="date")
@@ -868,10 +888,7 @@ def _prepare_pe_series(
         return pd.DataFrame(columns=["date", "pe"])
 
     net_profit_source = pd.Series(financial_frame["net_profit"], index=financial_frame.index)
-    net_profit_numeric = pd.Series(
-        pd.to_numeric(net_profit_source, errors="coerce"),
-        index=net_profit_source.index,
-    )
+    net_profit_numeric = _numeric_series(net_profit_source, index=net_profit_source.index)
     net_profit_series = cast(pd.Series, net_profit_numeric.dropna())
     if net_profit_series.empty:
         return pd.DataFrame(columns=["date", "pe"])
@@ -879,8 +896,8 @@ def _prepare_pe_series(
     if latest_net_profit <= 0:
         return pd.DataFrame(columns=["date", "pe"])
 
-    market_cap_numeric = pd.Series(
-        pd.to_numeric(market_cap_frame["market_cap"], errors="coerce"),
+    market_cap_numeric = _numeric_series(
+        market_cap_frame["market_cap"],
         index=market_cap_frame.index,
     )
     market_cap_normalized = _normalize_market_cap_for_pe(
@@ -903,7 +920,7 @@ def _normalize_market_cap_for_pe(
     latest_net_profit: float,
 ) -> pd.Series:
     """对市值序列做单位归一，尽量让估算 PE 回到合理量级。"""
-    raw_cap = pd.Series(pd.to_numeric(market_cap, errors="coerce"), index=market_cap.index)
+    raw_cap = _numeric_series(market_cap, index=market_cap.index)
     raw_pe = pd.Series(raw_cap / latest_net_profit, index=raw_cap.index)
     clean_pe = cast(pd.Series, raw_pe.dropna())
     if clean_pe.empty:

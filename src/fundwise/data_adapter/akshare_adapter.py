@@ -253,7 +253,8 @@ class AkshareDataAdapter:
                 "currency": info.currency,
             }
         )
-        result = cast(pd.DataFrame, result.loc[pd.to_numeric(result["pe"], errors="coerce") > 0, :])
+        pe_numeric = _numeric_series(result["pe"], index=result.index)
+        result = cast(pd.DataFrame, result.loc[pe_numeric > 0, :])
         return _finalize_sorted(result, PE_COLUMNS)
 
     def get_financial_indicators_quarterly(self, symbol: str) -> pd.DataFrame:
@@ -384,9 +385,10 @@ class AkshareDataAdapter:
                 ),
             }
         )
+        hs300_numeric = _numeric_series(result["hs300_pe"], index=result.index)
         result = cast(
             pd.DataFrame,
-            result.loc[pd.to_numeric(result["hs300_pe"], errors="coerce") > 0, :],
+            result.loc[hs300_numeric > 0, :],
         )
         return _finalize_sorted(result, INDEX_PE_COLUMNS)
 
@@ -494,9 +496,10 @@ class AkshareDataAdapter:
                 date_candidates=["日期", "date", "REPORT_DATE", "报告期"],
                 value_candidates=["净资产收益率(%)", "ROE", "ROE_AVG", "净资产收益率"],
             )
+            roe_numeric = _numeric_series(metric["roe"], index=metric.index)
             metric = cast(
                 pd.DataFrame,
-                metric.loc[pd.to_numeric(metric["roe"], errors="coerce").notna(), :],
+                metric.loc[roe_numeric.notna(), :],
             )
             if metric.empty:
                 continue
@@ -523,9 +526,10 @@ class AkshareDataAdapter:
                 "market": info.market,
             }
         )
+        industry_roe_numeric = _numeric_series(result["industry_roe"], index=result.index)
         result = cast(
             pd.DataFrame,
-            result.loc[pd.to_numeric(result["industry_roe"], errors="coerce").notna(), :],
+            result.loc[industry_roe_numeric.notna(), :],
         )
         if result.empty:
             logger.info("行业ROE回退缓存: symbol=%s, reason=aggregated_empty", info.symbol)
@@ -1207,9 +1211,10 @@ def _pick_industry_row(snapshot: pd.DataFrame, industry_name: str) -> pd.Series 
             return None
         exact = fuzzy
     if "行业层级" in exact.columns:
-        levels = pd.to_numeric(exact["行业层级"], errors="coerce")
+        levels = _numeric_series(exact["行业层级"], index=exact.index)
         if levels.notna().any():
-            max_level = float(levels.max())
+            valid_levels = cast(pd.Series, levels.dropna())
+            max_level = float(valid_levels.max())
             exact = cast(pd.DataFrame, exact.loc[levels == max_level, :])
     return exact.iloc[0]
 
@@ -1218,8 +1223,8 @@ def _safe_float_from_series(row: pd.Series, candidates: list[str]) -> float | No
     """从行对象按优先级提取浮点值。"""
     for key in candidates:
         if key in row.index:
-            value = pd.to_numeric(row[key], errors="coerce")
-            if not pd.isna(value):
+            value = _numeric_scalar(row[key])
+            if value is not None:
                 return float(value)
     return None
 
@@ -1261,14 +1266,16 @@ def _pick_balance_row(
         return selected, selected_date
 
     target_series = cast(pd.Series, date_series.loc[ordered_index])
-    exact_index = target_series[target_series == target].index
+    exact_mask = cast(pd.Series, target_series == target)
+    exact_index = target_series.loc[exact_mask].index
     if len(exact_index) > 0:
         selected_idx = exact_index[-1]
         selected = frame.loc[selected_idx]
         selected_date = cast(pd.Timestamp, date_series.loc[selected_idx]).strftime("%Y-%m-%d")
         return selected, selected_date
 
-    historical_index = target_series[target_series <= target].index
+    historical_mask = cast(pd.Series, target_series <= target)
+    historical_index = target_series.loc[historical_mask].index
     if len(historical_index) > 0:
         selected_idx = historical_index[-1]
     else:
@@ -1284,10 +1291,10 @@ def _sum_row_candidates(row: pd.Series, candidates: list[str]) -> float:
     for key in candidates:
         if key not in row.index:
             continue
-        value = pd.to_numeric(row[key], errors="coerce")
-        if pd.isna(value):
+        value = _numeric_scalar(row[key])
+        if value is None:
             continue
-        values.append(float(value))
+        values.append(value)
     if not values:
         return 0.0
     return float(sum(values))
@@ -1306,10 +1313,25 @@ def _sum_keyword_amount(frame: pd.DataFrame, keywords: list[str]) -> float:
     matched = cast(pd.DataFrame, frame.loc[mask, :])
     if matched.empty:
         return 0.0
-    numeric = pd.to_numeric(matched["AMOUNT"], errors="coerce").dropna()
+    numeric = cast(pd.Series, _numeric_series(matched["AMOUNT"], index=matched.index).dropna())
     if numeric.empty:
         return 0.0
     return float(numeric.sum())
+
+
+def _numeric_series(values: object, index: pd.Index | None = None) -> pd.Series:
+    """将任意输入安全收敛为数值 Series。"""
+    numeric = pd.to_numeric(values, errors="coerce")
+    return pd.Series(numeric, index=index)
+
+
+def _numeric_scalar(value: object) -> float | None:
+    """将标量安全转换为浮点值，无法转换时返回 None。"""
+    numeric = _numeric_series([value])
+    scalar = numeric.iloc[0]
+    if pd.isna(scalar):
+        return None
+    return float(scalar)
 
 
 def _non_negative(value: float | None) -> float:
