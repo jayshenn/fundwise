@@ -17,3 +17,8 @@ dev = [
 
 [tool.uv]
 package = false
+
+[tool.pytest.ini_options]
+markers = [
+  "integration: live network tests for AKShare interfaces",
+]
