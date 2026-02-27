@@ -1,44 +1,19 @@
 [project]
 name = "fundwise"
 version = "0.1.0"
-description = "A-share and HK-stock investment research assistant powered by AkShare."
+description = "Fundwise research workflow with AkShare"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "akshare",
-    "matplotlib>=3.10.8",
-    "pandas>=3.0.1",
+  "akshare>=1.18.30",
+  "pandas>=2.2.0",
+  "matplotlib>=3.9.0",
 ]
 
 [dependency-groups]
 dev = [
-    "ipykernel",
-    "jupyterlab>=4.5.5",
-    "pyright",
-    "pytest",
-    "ruff",
+  "pytest>=8.3.0",
 ]
 
 [tool.uv]
 package = false
-
-[tool.ruff]
-line-length = 100
-target-version = "py311"
-
-[tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "D"]
-ignore = [
-    "D203",
-    "D213",
-    "D400",
-    "D413",
-    "D415",
-]
-
-[tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["D103"]
-
-[tool.ruff.format]
-quote-style = "double"
-indent-style = "space"

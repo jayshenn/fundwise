@@ -1,207 +1,252 @@
 # fundwise
 
-借助 [AkShare](https://github.com/akfamily/akshare) 构建面向 **A 股与港股** 的投研辅助系统，支持公司分析、选股和择时决策。
+基于 [AkShare](https://github.com/akfamily/akshare) 的投研框架文档仓库，面向 **A 股与港股**，按彼得林奇（Peter Lynch）的思路支持：
 
-## 项目定位
+- 公司分析
+- 选股
+- 择时（节奏管理）
 
-- 这是一个 **投研决策支持** 项目，不是自动下单的量化交易系统。
-- 目标是把分散的数据转化为结构化分析结论，帮助提升研究效率与决策质量。
+> 定位：投研决策支持，不是自动交易系统。
 
-## 核心目标
+## 当前状态
 
-- 公司分析：构建公司体检卡（成长性、盈利质量、现金流、估值区间、风险提示）。
-- 选股支持：建立候选池与评分卡，输出“为什么值得关注”。
-- 择时支持：给出市场状态判断与仓位建议区间（低/中/高仓）。
-- 研究输出：自动生成日报/周报（观察池、重点公司、市场温度）。
+本仓库当前以文档与最小 live 测试为主：
 
-## 非目标
+- 文档：`docs/`
+- 最小真实网络测试：`tests/test_akshare_live_minimal.py`
 
-- 不做自动交易执行。
-- 不做高频或超短线策略系统。
-- 不以“预测短期价格”为核心目标。
+## 技术选型与依赖管理
 
-## 计划中的核心模块
+### 技术选型
 
-- `company_dossier`：单公司深度分析与跟踪。
-- `watchlist_screener`：多维评分筛选与候选池排序。
-- `market_timing_panel`：市场状态与风险偏好面板。
-- `report_engine`：结构化研究报告生成。
+- Python 3.11+
+- 包管理与运行：`uv`
+- 数据处理：`pandas`
+- 数据源：`akshare`
+- 测试框架：`pytest`
 
-## 数据范围
+### 依赖管理（uv）
 
-- 市场：A 股、港股。
-- 数据类型：行情、估值、财务、资金流、行业分类、关键事件（按可用性逐步扩展）。
-
-## 当前阶段
-
-当前已完成 `uv` 依赖管理、AkShare live 接口校验框架、`data_adapter` 标准化层、SQLite 元数据索引（含 `symbols` 股票池登记、`data_jobs` 任务日志与 `fx_rates` 汇率表）、单公司分析卡输出、观察池评分报告（`watchlist_screener`）MVP、市场择时面板（`market_timing_panel`）MVP，以及 `report_engine` 的 `matplotlib` 图表输出（PNG + Markdown 嵌入）。
-
-## Python 依赖管理（uv）
-
-本项目使用 [uv](https://docs.astral.sh/uv/) 管理 Python 版本与依赖。
+当前仓库已固定依赖：
 
 ```bash
-# 首次初始化（会根据 pyproject.toml 创建 .venv）
+# 初始化/更新虚拟环境
 uv sync
 
-# 安装运行时依赖（示例）
-uv add pandas matplotlib
-
-# 安装开发依赖（加入 dev 组）
-uv add --group dev jupyterlab
-
-# 在项目环境中运行命令
-uv run python -c "import akshare as ak; print('akshare ok')"
-
-# 初始化本地 SQLite 元数据库
-uv run python scripts/init_sqlite.py
-
-# 拉取单公司标准化数据并写入快照索引
-uv run python scripts/fetch_company_dataset.py --symbol 600519.SH --start-date 2024-01-01
-
-# 生成单公司分析卡（Markdown + 图表）并登记报告索引
-uv run python scripts/generate_company_report.py --symbol 600519.SH --start-date 2024-01-01
-
-# 生成观察池评分报告（Markdown + CSV + 图表）并登记报告索引
-uv run python scripts/generate_watchlist_report.py --symbols 600519.SH,000333.SZ,00700.HK --start-date 2024-01-01
-
-# 生成市场择时面板报告（Markdown + CSV + 图表）并登记报告索引
-uv run python scripts/generate_market_timing_report.py --symbols 600519.SH,000333.SZ,00700.HK --start-date 2024-01-01
-
-# 写入汇率（示例：2026-02-26 的 HKD->CNY）
-uv run python scripts/upsert_fx_rate.py --date 2026-02-26 --base-currency HKD --quote-currency CNY --rate 0.92 --source manual
-
-# 执行日常批处理流水线（按日期归档全部产物）
-uv run python scripts/run_daily_pipeline.py --symbols 600519.SH,000333.SZ,00700.HK --start-date 2024-01-01 --run-date 2026-02-26
-
-# 检查流水线健康状态（可用于 cron/CI 告警）
-uv run python scripts/check_pipeline_health.py --max-delay-hours 36
-
-# 生成流水线运行历史报告（运维视图）
-uv run python scripts/generate_pipeline_history_report.py --limit 30
-
-# 导出 AKShare 数据字典（HTML -> CSV/JSON，含 full_url）
-uv run python scripts/export_akshare_dictionary.py
+# 运行最小 live 测试
+uv run pytest -q tests/test_akshare_live_minimal.py -s
 ```
 
-依赖声明位于 `pyproject.toml`，建议将 `uv.lock` 提交到版本库以确保团队环境一致。
-
-## 开发规范与工具链
-
-当前技术栈：
-
-- 依赖与环境管理：`uv`
-- 项目配置：`pyproject.toml`
-- 代码检查与格式化：`ruff`
-- 测试框架：`pytest`
-- 类型检查（进阶）：`pyright`
-
-文档与注释约定：
-
-- 后续新增代码的 `docstring`、代码注释、命令行提示与报告文本默认使用中文。
-- 历史遗留英文说明逐步迁移为中文；必要时可保留专有名词（如 `AkShare`、`SQLite`）。
-
-常用命令：
+当你只想临时试跑某条命令（不修改项目依赖）时，也可以使用 `--with`：
 
 ```bash
-# 代码检查
-uv run ruff check .
-
-# 自动格式化
-uv run ruff format .
-
-# 单元/集成测试
-uv run pytest -q
-
-# 类型检查
-uv run pyright
+# 临时注入依赖的运行方式（备用）
+uv run --with akshare --with pandas --with matplotlib \
+  python scripts/generate_structured_markdown_report.py --symbol 600519.SH
 ```
 
-### AkShare 接口校验测试
+建议：
+
+- 日常开发/测试：优先 `uv sync` + `uv run ...`
+- 临时实验：按需使用 `uv run --with ...`
+
+## 彼得林奇框架（落地版）
+
+### 1) 公司分析（先判断是不是好公司）
+
+核心维度：
+
+- 成长性：营收/利润增长及稳定性
+- 盈利质量：利润与现金流匹配度
+- 财务健康：负债结构与偿债压力
+- 估值合理性：PE/PB 相对历史和行业位置
+- 风险项：商誉、事件冲击、行业景气变化
+
+### 2) 选股（分类 + 打分）
+
+建议流程：
+
+- 按公司类型分层（慢增长/稳健增长/快速增长/周期/困境反转/资产型）
+- 多因子打分（增长、质量、估值、风险）
+- 输出“为什么值得关注”的证据链
+
+### 3) 择时（轻择时，重估值与仓位）
+
+建议原则：
+
+- 不追求短期点位预测
+- 用估值区间 + 分批建仓/减仓管理节奏
+- 用行业资金流、行业指数、市场热度做辅助，不替代基本面
+
+## 数据方法：先字典，再正文，再实测
+
+按 [AKShare数据字典使用说明](docs/AKShare数据字典使用说明.md) 执行：
+
+1. 在 `docs/AKShare数据字典.csv` / `.json` 召回候选接口
+2. 用 `full_url` 定位 AKShare 文档正文
+3. 映射到具体函数后，做真实网络调用测试
+
+## 已实测通过的核心接口（2026-02-27）
+
+以下接口已通过最小 live 测试（非空、关键列、新鲜度）：
+
+- 行情：`stock_zh_a_hist_tx`
+- 个股估值：`stock_zh_valuation_baidu`、`stock_hk_valuation_baidu`
+- A 股三大报表：
+  - `stock_balance_sheet_by_yearly_em`
+  - `stock_profit_sheet_by_yearly_em`
+  - `stock_cash_flow_sheet_by_yearly_em`
+- 港股财务指标：`stock_financial_hk_analysis_indicator_em`
+- 行业：
+  - `stock_industry_pe_ratio_cninfo`
+  - `stock_board_industry_name_ths`
+  - `stock_board_industry_index_ths`
+  - `stock_fund_flow_industry`
+
+说明：上述接口与数据字典条目通过 `title + full_url` 做了可追溯校验。
+
+## 辅助定性接口（抽测结果，2026-02-27）
+
+以下接口可用于“定性判断的量化代理”，已做真实网络抽测：
+
+- 舆情与披露：
+  - `stock_news_em`（个股新闻）
+  - `stock_notice_report`（公告）
+  - `stock_report_disclosure`（财报披露排期）
+- 研究观点：
+  - `stock_research_report_em`（个股研报）
+  - `stock_analyst_rank_em`（分析师排行）
+  - `stock_analyst_detail_em`（分析师跟踪成分股）
+- 管理层行为与资本配置：
+  - `stock_yjyg_em`（业绩预告）
+  - `stock_yjkb_em`（业绩快报）
+  - `stock_repurchase_em`（股票回购）
+  - `stock_hold_management_person_em`（董监高个人增减持）
+- 公司治理风险：
+  - `stock_cg_guarantee_cninfo`（对外担保）
+  - `stock_cg_equity_mortgage_cninfo`（股权质押）
+- 商誉风险专题：
+  - `stock_sy_profile_em`（A股商誉市场概况）
+  - `stock_sy_yq_em`（商誉减值预期明细，`date=20240630` 可用）
+  - `stock_sy_jz_em`（个股商誉减值明细，`date=20231231` 可用）
+  - `stock_sy_em`（个股商誉明细，`date=20231231` 可用）
+  - `stock_sy_hy_em`（行业商誉，`date=20231231` 可用）
+
+稳定性说明（建议在工程中做回退与容错）：
+
+- `stock_cg_lawsuit_cninfo`：抽测出现 `KeyError: 'records'`。
+- `stock_institute_recommend` / `stock_institute_recommend_detail`：源站页面结构变动，解析失败。
+- `stock_institute_hold`：近期季度（如 `20251`）可能为空，历史季度（如 `20241`）可用。
+- 商誉相关接口对报告期敏感，建议按 `20240930 -> 20240630 -> 20240331 -> 20231231` 回退。
+
+定性打分落地建议：
+
+- 将上述接口作为“定性代理信号”，不要直接替代人工判断。
+- 评分形式建议为 `证据 -> 分项分数 -> 置信度(A/B/C)`。
+- 设置红线项（重大违规、治理异常、持续减值恶化）一票否决。
+
+## 林奇指标对照表（最小可行）
+
+下表只使用本轮已 live 验证通过的接口，作为第一版可落地指标体系。
+
+| 林奇维度 | 指标 | AkShare 接口（已实测） | 计算方式（建议） | 用途 |
+| --- | --- | --- | --- | --- |
+| 成长性 | 营收同比（YoY） | `stock_profit_sheet_by_yearly_em`、`stock_financial_hk_analysis_indicator_em` | `revenue_yoy = (本期营收/上年同期营收) - 1` | 判断公司是否持续增长 |
+| 成长性 | 净利润同比（YoY） | `stock_profit_sheet_by_yearly_em`、`stock_financial_hk_analysis_indicator_em` | `profit_yoy = (本期净利润/上年同期净利润) - 1` | 判断增长质量是否同步 |
+| 盈利能力 | ROE | `stock_financial_hk_analysis_indicator_em`（A 股可由利润表+资产负债表近似计算） | 港股优先直接取 `ROE_AVG`；A 股可用 `净利润/平均净资产` | 判断资本回报效率 |
+| 盈利质量 | 经营现金流/净利润 | `stock_cash_flow_sheet_by_yearly_em` + `stock_profit_sheet_by_yearly_em` + `stock_financial_hk_analysis_indicator_em` | `cash_quality = OCF / NetProfit` | 识别“利润含金量” |
+| 财务健康 | 资产负债率 | `stock_balance_sheet_by_yearly_em` | `debt_to_asset = 总负债 / 总资产` | 判断杠杆风险 |
+| 估值 | PE(TTM) 当前值 | `stock_zh_valuation_baidu`、`stock_hk_valuation_baidu` | 直接读取最近交易日 `value` | 判断贵/便宜 |
+| 估值 | PE 历史分位 | `stock_zh_valuation_baidu`、`stock_hk_valuation_baidu` | `pct = rank(当前PE, 历史PE序列)` | 与公司自身历史估值比较 |
+| 估值 | 行业相对 PE | `stock_industry_pe_ratio_cninfo` + 个股估值接口 | `relative_pe = 个股PE / 行业PE` | 判断相对行业是否高估 |
+| 选股打分 | 成长-估值匹配（PEG 近似） | 个股估值接口 + 利润表/财务指标接口 | `PEG ≈ PE / 利润增速(%)` | 识别“增长与估值错配” |
+| 择时辅助 | 行业趋势 | `stock_board_industry_index_ths` | 可用 20/60 日均线或近 N 日收益率 | 辅助判断行业景气方向 |
+| 择时辅助 | 行业资金净流入 | `stock_fund_flow_industry` | 直接使用行业 `净额` 排序 | 观察资金风险偏好 |
+| 择时辅助 | 市场交易温度 | `stock_zh_a_hist_tx`（指数替代可扩展） | 统计涨跌幅分布、波动率、成交变化 | 控制仓位节奏 |
+
+口径建议：
+
+- 增长率与 PEG 建议同时看 3 年与 5 年窗口，减少单年波动干扰。
+- A 股与港股字段命名不同，先做标准化映射再计算（不要直接在分析层依赖原始列名）。
+- PEG 是近似值，不应单独决策，必须与现金流和负债指标联看。
+
+## 最小 live 测试
+
+运行命令：
 
 ```bash
-# 默认：不跑 live（会 skip）
-uv run pytest -q
-
-# live 校验（网络异常默认 skip）
-uv run env RUN_AKSHARE_TESTS=1 pytest -q -m akshare_live -s
-
-# 仅跑行业接口校验
-uv run env RUN_AKSHARE_TESTS=1 pytest -q tests/test_akshare_live_industry_contracts.py -s
-
-# 严格模式（网络/上游异常直接 fail）
-uv run env RUN_AKSHARE_TESTS=1 AKSHARE_STRICT=1 pytest -q -m akshare_live -s
+uv run pytest -q tests/test_akshare_live_minimal.py -s
 ```
 
-上述命令会覆盖个股与行业接口的可用性、字段契约和基础数据新鲜度校验。  
-详细说明见：`docs/AkShare接口可用性与字段校验说明.md`
+最近一次结果（2026-02-27）：
+
+- `22 passed`
+
+## 结构化 Markdown 报告输出（含图表）
+
+新增脚本：
+
+- `scripts/generate_structured_markdown_report.py`
+
+示例命令（A 股）：
+
+```bash
+uv run python scripts/generate_structured_markdown_report.py \
+  --symbol 600519.SH \
+  --start-date 2025-01-01 \
+  --end-date 2026-02-27 \
+  --report-date 2026-02-27 \
+  --out-dir reports/structured
+```
+
+示例命令（港股）：
+
+```bash
+uv run python scripts/generate_structured_markdown_report.py \
+  --symbol 00700.HK \
+  --start-date 2025-01-01 \
+  --end-date 2026-02-27 \
+  --report-date 2026-02-27 \
+  --out-dir reports/structured
+```
+
+输出结构：
+
+- `reports/structured/<report-date>/<symbol>/report-<symbol>-<report-date>.md`
+- `reports/structured/<report-date>/<symbol>/charts/*.png`
+
+报告包含：
+
+- 执行摘要（价格、PE、营收、净利润）
+- 核心数据快照
+- 关键图表（价格趋势、PE 趋势、营收净利润趋势、风险指标趋势）
+- 结论与跟踪建议
+
+说明：
+
+- 估值接口偶发网络/TLS 异常时，脚本会降级跳过 PE 图，不影响报告主流程。
+- 若本机缺中文字体，图表可能出现中文字符告警，但图片仍会正常生成。
+
+## 能力边界（与林奇框架对应）
+
+AkShare 可较好覆盖“量化部分”：
+
+- 行情/估值/财报/行业对比/资金流
+
+AkShare 对“定性部分”可提供量化代理信号（新闻、公告、研报、增减持、回购、商誉、治理事件），但仍不能替代人工判断的核心问题：
+
+- 管理层质量
+- 产品竞争力与护城河
+- 一线调研信息（渠道、用户体验等）
+
+因此建议：
+
+- 用 AkShare 做量化底座
+- 用公告、纪要、新闻和人工研究补齐定性判断
 
 ## 文档索引
 
-- `docs/架构与设计说明.md`
-- `docs/AkShare接口可用性与字段校验说明.md`
-- `docs/观察池/AIDC&IDC 算力观察池（A股+港股）.md`
-- `docs/AKShare数据字典使用说明.md`
-
-## 单公司 8 图清单（A 股 + 港股）
-
-以下图表用于单公司长期趋势研判，默认输出 PNG 并嵌入 Markdown 报告：
-
-| 图表 | 核心口径 | 主要数据来源（AkShare） |
-| --- | --- | --- |
-| 市值 vs 营收趋势 | 总市值（线）+ 总营收（柱） | 个股估值 + 利润表 |
-| 主营收 vs 经营现金流趋势 | 主营收、经营活动现金流净额 | 利润表 + 现金流量表 |
-| 净利润 vs 经营现金流趋势 | 归母净利润、经营活动现金流净额 | 利润表 + 现金流量表 |
-| 市盈率对比趋势 | 公司 PE、行业 PE、沪深300 PE | 个股估值 + 行业 PE + 指数 PE |
-| PE 均值与标准差区间 | 公司 PE、8 年均值、±1σ | 个股估值 |
-| ROE 对比趋势 | 公司 ROE、行业 ROE（中位数） | 财务分析指标 + 行业成分股 |
-| 资产负债结构（单期） | 资产/负债科目合并同类项 | 资产负债表 |
-| 总资产/总负债/资产负债率趋势 | 总资产、总负债、资产负债率 | 资产负债表（资产负债率可计算） |
-
-## 字段映射建议（统一内部字段）
-
-为减少 A 股与港股接口差异，建议先做一层标准化字段：
-
-| 内部字段 | 常见原始字段（示例） | 备注 |
-| --- | --- | --- |
-| `symbol` | 代码 | 建议统一为 `600519.SH` / `00700.HK` 这类通用格式 |
-| `date` | 报告期/交易日 | 统一为 `YYYY-MM-DD` |
-| `market_cap` | 总市值 | 尽量使用同一币种；跨市场时保留 `currency` |
-| `revenue` | 营业总收入/主营业务收入 | 需固定一种口径 |
-| `net_profit` | 归母净利润/净利润 | 优先归母口径 |
-| `ocf` | 经营活动现金流净额 | 对应现金流量表 |
-| `pe_ttm` | 市盈率(TTM) | 若无 TTM，可降级使用静态 PE |
-| `industry_pe` | 行业市盈率 | 低频快照，绘图时前向填充 |
-| `hs300_pe` | 沪深300市盈率 | 指数估值基准线 |
-| `roe` | ROE(%) | 保持加权平均或摊薄口径一致 |
-| `industry_roe` | 行业 ROE（中位数） | 基于行业成分股聚合计算 |
-| `total_assets` | 资产总计 | 来自资产负债表 |
-| `total_liabilities` | 负债合计 | 来自资产负债表 |
-| `debt_to_asset` | 资产负债率 | 建议统一按 `total_liabilities / total_assets` 计算 |
-| `currency` | 币种 | A 股通常 `CNY`，港股通常 `HKD` |
-
-> 注：AkShare 不同接口字段命名与代码参数格式可能略有差异，建议在 `data_adapter` 层做列名映射、代码格式转换与口径校验，不在分析层直接依赖原始列名。
-
-## 跨币种折算说明
-
-- 若在 `fx_rates` 中写入了币种到 `CNY` 的汇率，单公司报告会自动输出 CNY 折算字段（市值/营收/净利润/经营现金流）。
-- `CNY` 标的默认按 `1.0` 折算，无需额外写汇率。
-- 非 `CNY` 标的若缺失汇率，报告会保留原币种并将 CNY 折算值显示为 `N/A`。
-
-## 行业数据主备策略
-
-- 主数据源：AkShare 实时行业接口（行业 PE、行业成分股、行业 ROE 聚合）。
-- 备数据源：本地缓存快照（`data/cache/industry/*.csv`）。
-- 回退规则：当实时接口返回空数据或临时异常时，自动回退读取最近缓存，不中断报告流程。
-- 缓存写入：当实时拉取成功后，自动覆盖写入对应缓存文件，供后续主源异常时兜底。
-
-## 日常流水线说明
-
-- `scripts/run_daily_pipeline.py` 会串联执行：单标的拉数与快照索引、单公司报告、观察池报告、择时面板、执行摘要归档。
-- 默认归档目录：
-  - 报告：`reports/daily/<run-date>/...`
-  - 标准化数据：`data/normalized/<run-date>/...`
-- 默认策略为“有失败标的即返回非 0 退出码”，便于对接 `cron`/CI 告警。
-- 若希望部分失败仍返回 0，可附加 `--allow-partial-success`。
-- 可通过 `scripts/check_pipeline_health.py` 做独立健康巡检（失败/超时/过期返回非 0）。
-- 可通过 `scripts/generate_pipeline_history_report.py` 生成最近任务历史报告并登记到报告索引。
+- [AKShare数据字典使用说明](docs/AKShare数据字典使用说明.md)
+- [AKShare数据字典.csv](docs/AKShare数据字典.csv)
+- [AKShare数据字典.json](docs/AKShare数据字典.json)
+- [AkShare接口可用性与字段校验说明](docs/AkShare接口可用性与字段校验说明.md)
