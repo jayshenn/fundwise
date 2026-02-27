@@ -79,6 +79,9 @@ uv run python scripts/check_pipeline_health.py --max-delay-hours 36
 
 # 生成流水线运行历史报告（运维视图）
 uv run python scripts/generate_pipeline_history_report.py --limit 30
+
+# 导出 AKShare 数据字典（HTML -> CSV/JSON，含 full_url）
+uv run python scripts/export_akshare_dictionary.py
 ```
 
 依赖声明位于 `pyproject.toml`，建议将 `uv.lock` 提交到版本库以确保团队环境一致。
@@ -137,7 +140,8 @@ uv run env RUN_AKSHARE_TESTS=1 AKSHARE_STRICT=1 pytest -q -m akshare_live -s
 
 - `docs/架构与设计说明.md`
 - `docs/AkShare接口可用性与字段校验说明.md`
-- `docs/AIDC&IDC 算力观察池（A股+港股）.md`
+- `docs/观察池/AIDC&IDC 算力观察池（A股+港股）.md`
+- `docs/AKShare数据字典使用说明.md`
 
 ## 单公司 8 图清单（A 股 + 港股）
 
